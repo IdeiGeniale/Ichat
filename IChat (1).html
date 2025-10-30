@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The IChat Project</title>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .disconnected {
+            background-color: #ffdddd;
+            color: #d32f2f;
+        }
+        .connected {
+            background-color: #ddffdd;
+            color: #388e3c;
+        }
+        .host-indicator {
+            background-color: #fff3e0;
+            color: #e65100;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-left: 10px;
+            display: inline-block;
+        }
+        .id-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input, button, select {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+        input {
+            flex-grow: 1;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .chat-container {
+            display: none;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            height: 400px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .messages {
+            height: calc(100% - 50px);
+            overflow-y: auto;
+            padding: 10px;
+        }
+        .message-input {
+            display: flex;
+            border-top: 1px solid #ddd;
+        }
+        .message-input input {
+            border: none;
+            border-radius: 0;
+        }
+        .message-input button {
+            border-radius: 0;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 5px;
+            max-width: 70%;
+            word-wrap: break-word;
+            position: relative;
+        }
+        .received {
+            background-color: #e3f2fd;
+            margin-right: auto;
+        }
+        .sent {
+            background-color: #e8f5e9;
+            margin-left: auto;
+        }
+        .disconnect-btn {
+            background-color: #e74c3c;
+        }
+        .disconnect-btn:hover {
+            background-color: #c0392b;
+        }
+        .mute-btn {
+            background-color: #ff9800;
+        }
+        .mute-btn:hover {
+            background-color: #f57c00;
+        }
+        .save-btn {
+            background-color: #4caf50;
+        }
+        .save-btn:hover {
+            background-color: #388e3c;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        .timestamp {
+            font-size: 10px;
+            color: #666;
+            position: absolute;
+            bottom: 2px;
+            right: 8px;
+        }
+        .chat-history {
+            margin-top: 20px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+        .chat-history h3 {
+            margin-bottom: 10px;
+        }
+        .saved-chat {
+            padding: 5px;
+            margin-bottom: 5px;
+            background-color: #f9f9f9;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .saved-chat:hover {
+            background-color: #eee;
+        }
+        .cookie-consent {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #333;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            z-index: 1000;
+            display: none;
+        }
+        .cookie-consent button {
+            margin: 0 10px;
+            padding: 5px 15px;
+        }
+        .accept-cookies {
+            background-color: #4CAF50;
+        }
+        .decline-cookies {
+            background-color: #f44336;
+        }
+        .id-book {
+            margin-top: 20px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+        .id-book h3 {
+            margin-bottom: 10px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .id-book-content {
+            display: none;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        .id-book-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .id-book-item:last-child {
+            border-bottom: none;
+        }
+        .id-book-item-info {
+            flex-grow: 1;
+        }
+        .id-book-item-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .id-book-nickname {
+            font-weight: bold;
+        }
+        .id-book-id {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .id-book-edit {
+            background-color: #ffc107;
+            color: #000;
+            border: none;
+            border-radius: 3px;
+            padding: 3px 8px;
+            cursor: pointer;
+        }
+        .id-book-connect {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 3px 8px;
+            cursor: pointer;
+        }
+        .edit-nickname {
+            display: none;
+            margin-top: 5px;
+        }
+        .edit-nickname input {
+            padding: 5px;
+            width: 150px;
+            margin-right: 5px;
+        }
+        .edit-nickname button {
+            padding: 5px 10px;
+        }
+        .connection-alert {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            z-index: 1001;
+            text-align: center;
+            max-width: 80%;
+            display: none;
+        }
+        .connection-alert-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .connection-alert button {
+            padding: 8px 15px;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>The IChat Project <span id="host-indicator" class="host-indicator" style="display: none;">Host</span></h1>
+        
+        <div id="status" class="status disconnected">
+            Disconnected - Waiting for peer connection
+        </div>
+        
+        <div class="id-section">
+            <input type="text" id="peer-id" placeholder="Your 6-digit ID" readonly>
+            <button id="copy-id">Copy ID</button>
+            <button id="new-id">New ID</button>
+        </div>
+        
+        <div class="id-section">
+            <input type="text" id="connect-id" placeholder="Enter peer's 6-digit ID">
+            <button id="connect-btn">Connect</button>
+        </div>
+        
+        <div id="action-buttons" class="action-buttons" style="display: none;">
+            <button id="mute-btn" class="mute-btn">Mute Peer</button>
+            <button id="save-btn" class="save-btn">Save Chat History</button>
+        </div>
+        
+        <div id="chat-container" class="chat-container">
+            <div id="messages" class="messages"></div>
+            <div class="message-input">
+                <input type="text" id="message-input" placeholder="Type your message...">
+                <button id="send-btn">Send</button>
+            </div>
+        </div>
+        
+        <button id="disconnect-btn" class="disconnect-btn" style="display: none; width: 100%;">Disconnect</button>
+        
+        <div id="chat-history" class="chat-history" style="display: none;">
+            <h3>Saved Chat History</h3>
+            <div id="saved-chats"></div>
+        </div>
+        
+        <div id="id-book" class="id-book">
+            <h3 id="id-book-toggle">ID Book <span>▼</span></h3>
+            <div id="id-book-content" class="id-book-content">
+                <div id="id-book-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="overlay" class="overlay"></div>
+    
+    <div id="connection-alert" class="connection-alert">
+        <h3 id="alert-title">Incoming Connection</h3>
+        <p id="alert-message">Peer <span id="alert-peer-id"></span> wants to connect with you.</p>
+        <div class="connection-alert-buttons">
+            <button id="accept-connection" class="accept-cookies">Accept</button>
+            <button id="reject-connection" class="decline-cookies">Reject</button>
+        </div>
+    </div>
+
+    <div id="cookie-consent" class="cookie-consent">
+        <p>This website uses cookies to save your chat ID and preferences. Do you agree to use cookies?</p>
+        <button id="accept-cookies" class="accept-cookies">Accept</button>
+        <button id="decline-cookies" class="decline-cookies">Decline</button>
+    </div>
+
+    <script>
+        // Cookie functions
+        function setCookie(name, value, days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            const expires = "expires=" + date.toUTCString();
+            document.cookie = name + "=" + value + ";" + expires + ";path=/";
+        }
+
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length);
+            }
+            return null;
+        }
+
+        function eraseCookie(name) {
+            document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        }
+
+        function checkCookiesEnabled() {
+            return navigator.cookieEnabled;
+        }
+
+        function showCookieConsent() {
+            if (getCookie('cookie_consent') === null) {
+                document.getElementById('cookie-consent').style.display = 'block';
+            }
+        }
+
+        function hideCookieConsent() {
+            document.getElementById('cookie-consent').style.display = 'none';
+        }
+
+        // Generate a random 6-digit ID
+        function generateId() {
+            return Math.floor(100000 + Math.random() * 900000).toString();
+        }
+
+        // DOM elements
+        const statusDiv = document.getElementById('status');
+        const peerIdInput = document.getElementById('peer-id');
+        const copyIdBtn = document.getElementById('copy-id');
+        const newIdBtn = document.getElementById('new-id');
+        const connectIdInput = document.getElementById('connect-id');
+        const connectBtn = document.getElementById('connect-btn');
+        const chatContainer = document.getElementById('chat-container');
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const hostIndicator = document.getElementById('host-indicator');
+        const actionButtons = document.getElementById('action-buttons');
+        const muteBtn = document.getElementById('mute-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const chatHistory = document.getElementById('chat-history');
+        const savedChats = document.getElementById('saved-chats');
+        const cookieConsent = document.getElementById('cookie-consent');
+        const acceptCookiesBtn = document.getElementById('accept-cookies');
+        const declineCookiesBtn = document.getElementById('decline-cookies');
+        const idBookToggle = document.getElementById('id-book-toggle');
+        const idBookContent = document.getElementById('id-book-content');
+        const idBookList = document.getElementById('id-book-list');
+        const overlay = document.getElementById('overlay');
+        const connectionAlert = document.getElementById('connection-alert');
+        const alertTitle = document.getElementById('alert-title');
+        const alertMessage = document.getElementById('alert-message');
+        const alertPeerId = document.getElementById('alert-peer-id');
+        const acceptConnectionBtn = document.getElementById('accept-connection');
+        const rejectConnectionBtn = document.getElementById('reject-connection');
+
+        // PeerJS variables
+        let peer;
+        let conn;
+        let myId;
+        let isHost = false;
+        let isMuted = false;
+        let chatHistoryData = [];
+        let currentChat = {
+            peerId: '',
+            messages: [],
+            date: null
+        };
+        let incomingConnection = null;
+
+        // ID Book functions
+        function loadIdBook() {
+            const idBook = localStorage.getItem('peerjs_id_book');
+            return idBook ? JSON.parse(idBook) : [];
+        }
+
+        function saveIdBook(idBook) {
+            localStorage.setItem('peerjs_id_book', JSON.stringify(idBook));
+        }
+
+        function addToIdBook(peerId) {
+            const idBook = loadIdBook();
+            
+            // Check if this ID already exists
+            const existingEntry = idBook.find(entry => entry.id === peerId);
+            
+            if (!existingEntry) {
+                idBook.push({
+                    id: peerId,
+                    nickname: '',
+                    lastContacted: new Date().toISOString()
+                });
+                saveIdBook(idBook);
+                renderIdBook();
+            } else {
+                // Update last contacted time
+                existingEntry.lastContacted = new Date().toISOString();
+                saveIdBook(idBook);
+            }
+        }
+
+        function updateNickname(peerId, nickname) {
+            const idBook = loadIdBook();
+            const entry = idBook.find(entry => entry.id === peerId);
+            
+            if (entry) {
+                entry.nickname = nickname;
+                saveIdBook(idBook);
+                renderIdBook();
+            }
+        }
+
+        function renderIdBook() {
+            const idBook = loadIdBook();
+            
+            idBookList.innerHTML = '';
+            
+            if (idBook.length === 0) {
+                idBookList.innerHTML = '<p>No peers in your ID Book yet.</p>';
+                return;
+            }
+            
+            // Sort by last contacted (newest first)
+            idBook.sort((a, b) => new Date(b.lastContacted) - new Date(a.lastContacted));
+            
+            idBook.forEach(entry => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'id-book-item';
+                
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'id-book-item-info';
+                
+                const nicknameSpan = document.createElement('span');
+                nicknameSpan.className = 'id-book-nickname';
+                nicknameSpan.textContent = entry.nickname || 'Unnamed Peer';
+                
+                const idSpan = document.createElement('span');
+                idSpan.className = 'id-book-id';
+                idSpan.textContent = entry.id;
+                
+                infoDiv.appendChild(nicknameSpan);
+                infoDiv.appendChild(document.createElement('br'));
+                infoDiv.appendChild(idSpan);
+                
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'id-book-item-actions';
+                
+                const editBtn = document.createElement('button');
+                editBtn.className = 'id-book-edit';
+                editBtn.textContent = 'Edit';
+                editBtn.onclick = () => showEditNickname(entry.id);
+                
+                const connectBtn = document.createElement('button');
+                connectBtn.className = 'id-book-connect';
+                connectBtn.textContent = 'Connect';
+                connectBtn.onclick = () => {
+                    if (!conn) {
+                        connectIdInput.value = entry.id;
+                        connectToPeer();
+                    } else {
+                        alert('Please disconnect from current peer first');
+                    }
+                };
+                
+                actionsDiv.appendChild(editBtn);
+                actionsDiv.appendChild(connectBtn);
+                
+                itemDiv.appendChild(infoDiv);
+                itemDiv.appendChild(actionsDiv);
+                
+                // Edit nickname section
+                const editDiv = document.createElement('div');
+                editDiv.className = 'edit-nickname';
+                editDiv.id = `edit-nickname-${entry.id}`;
+                
+                const editInput = document.createElement('input');
+                editInput.type = 'text';
+                editInput.placeholder = 'Enter nickname';
+                editInput.value = entry.nickname;
+                
+                const saveBtn = document.createElement('button');
+                saveBtn.textContent = 'Save';
+                saveBtn.onclick = () => {
+                    updateNickname(entry.id, editInput.value.trim());
+                    editDiv.style.display = 'none';
+                };
+                
+                const cancelBtn = document.createElement('button');
+                cancelBtn.textContent = 'Cancel';
+                cancelBtn.onclick = () => {
+                    editDiv.style.display = 'none';
+                };
+                
+                editDiv.appendChild(editInput);
+                editDiv.appendChild(saveBtn);
+                editDiv.appendChild(cancelBtn);
+                
+                itemDiv.appendChild(editDiv);
+                idBookList.appendChild(itemDiv);
+            });
+        }
+
+        function showEditNickname(peerId) {
+            // Hide all edit fields first
+            document.querySelectorAll('.edit-nickname').forEach(el => {
+                el.style.display = 'none';
+            });
+            
+            // Show the requested one
+            const editDiv = document.getElementById(`edit-nickname-${peerId}`);
+            if (editDiv) {
+                editDiv.style.display = 'block';
+                editDiv.querySelector('input').focus();
+            }
+        }
+
+        // Connection alert functions
+        function showConnectionAlert(peerId, isIncoming = true) {
+            overlay.style.display = 'block';
+            connectionAlert.style.display = 'block';
+            
+            if (isIncoming) {
+                alertTitle.textContent = 'Incoming Connection';
+                alertMessage.textContent = `Peer ${peerId} wants to connect with you.`;
+            } else {
+                alertTitle.textContent = 'Connecting...';
+                alertMessage.textContent = `Attempting to connect with peer ${peerId}.`;
+            }
+            
+            alertPeerId.textContent = peerId;
+        }
+
+        function hideConnectionAlert() {
+            overlay.style.display = 'none';
+            connectionAlert.style.display = 'none';
+        }
+
+        // Initialize PeerJS
+        function initializePeer() {
+            // Check for saved ID in cookies
+            const savedId = getCookie('peerjs_chat_id');
+            
+            if (savedId && savedId.length === 6 && /^\d+$/.test(savedId)) {
+                myId = savedId;
+            } else {
+                myId = generateId();
+                setCookie('peerjs_chat_id', myId, 365);
+            }
+            
+            peer = new Peer(myId);
+            
+            peer.on('open', (id) => {
+                peerIdInput.value = id;
+                updateStatus('Disconnected - Waiting for peer connection', false);
+                loadChatHistory();
+                renderIdBook();
+            });
+            
+            peer.on('connection', (connection) => {
+                // If already connected, reject the new connection
+                if (conn) {
+                    connection.close();
+                    return;
+                }
+                
+                incomingConnection = connection;
+                showConnectionAlert(connection.peer);
+            });
+            
+            peer.on('error', (err) => {
+                console.error('PeerJS error:', err);
+                updateStatus(`Error: ${err.type}`, false);
+            });
+            
+            peer.on('disconnected', () => {
+                updateStatus('Connection lost. Attempting to reconnect...', false);
+                // Try to reconnect
+                setTimeout(() => {
+                    if (!peer.destroyed && !peer.disconnected) {
+                        peer.reconnect();
+                    }
+                }, 5000);
+            });
+            
+            peer.on('close', () => {
+                resetConnection();
+                updateStatus('Connection closed. Refresh page to start new connection.', false);
+            });
+        }
+
+        // Set up connection event handlers
+        function setupConnection() {
+            conn.on('data', (data) => {
+                if (data.type === 'message' && !isMuted) {
+                    const timestamp = new Date();
+                    addMessage(data.text, false, timestamp);
+                    currentChat.messages.push({
+                        text: data.text,
+                        sent: false,
+                        timestamp: timestamp
+                    });
+                    autoSaveChat();
+                } else if (data.type === 'notification') {
+                    addNotification(data.text);
+                }
+            });
+            
+            conn.on('close', () => {
+                resetConnection();
+                updateStatus('Peer disconnected', false);
+                addNotification('Connection closed');
+            });
+            
+            conn.on('error', (err) => {
+                console.error('Connection error:', err);
+                updateStatus(`Connection error: ${err.message}`, false);
+                addNotification(`Connection error: ${err.message}`);
+            });
+        }
+
+        // Reset connection variables
+        function resetConnection() {
+            if (conn) {
+                conn.close();
+                conn = null;
+            }
+            chatContainer.style.display = 'none';
+            disconnectBtn.style.display = 'none';
+            actionButtons.style.display = 'none';
+            hostIndicator.style.display = 'none';
+            isHost = false;
+            isMuted = false;
+            muteBtn.textContent = 'Mute Peer';
+            saveCurrentChat();
+        }
+
+        // Update status display
+        function updateStatus(text, isConnected) {
+            statusDiv.textContent = text;
+            statusDiv.className = isConnected ? 'status connected' : 'status disconnected';
+        }
+
+        // Add a message to the chat
+        function addMessage(text, isSent, timestamp = new Date()) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
+            messageDiv.textContent = text;
+            
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'timestamp';
+            timeDiv.textContent = formatTime(timestamp);
+            messageDiv.appendChild(timeDiv);
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Add a notification to the chat
+        function addNotification(text) {
+            const notificationDiv = document.createElement('div');
+            notificationDiv.style.textAlign = 'center';
+            notificationDiv.style.margin = '10px 0';
+            notificationDiv.style.color = '#666';
+            notificationDiv.style.fontSize = '12px';
+            notificationDiv.textContent = text;
+            messagesDiv.appendChild(notificationDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Format time for display
+        function formatTime(date) {
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Connect to another peer
+        function connectToPeer() {
+            const peerId = connectIdInput.value.trim();
+            
+            if (!peerId) {
+                alert('Please enter a peer ID');
+                return;
+            }
+            
+            if (peerId === myId) {
+                alert('Cannot connect to yourself');
+                return;
+            }
+            
+            if (conn) {
+                alert('Already connected to a peer. Disconnect first.');
+                return;
+            }
+            
+            showConnectionAlert(peerId, false);
+            
+            conn = peer.connect(peerId);
+            
+            conn.on('open', () => {
+                hideConnectionAlert();
+                updateStatus(`Connected to ${conn.peer}`, true);
+                chatContainer.style.display = 'block';
+                disconnectBtn.style.display = 'block';
+                actionButtons.style.display = 'flex';
+                hostIndicator.style.display = 'inline-block';
+                isHost = true;
+                currentChat.peerId = conn.peer;
+                currentChat.date = new Date();
+                
+                // Add to ID Book
+                addToIdBook(conn.peer);
+                
+                // Send a welcome notification
+                conn.send({
+                    type: 'notification',
+                    text: 'You are now connected!'
+                });
+                addNotification('You are now connected!');
+            });
+            
+            conn.on('error', (err) => {
+                hideConnectionAlert();
+                console.error('Connection error:', err);
+                updateStatus(`Failed to connect: ${err.message}`, false);
+                conn = null;
+                isHost = false;
+                hostIndicator.style.display = 'none';
+                addNotification(`Failed to connect: ${err.message}`);
+            });
+            
+            setupConnection();
+        }
+
+        // Send a message
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            
+            if (!text || !conn || !conn.open) {
+                return;
+            }
+            
+            conn.send({
+                type: 'message',
+                text: text
+            });
+            
+            const timestamp = new Date();
+            addMessage(text, true, timestamp);
+            currentChat.messages.push({
+                text: text,
+                sent: true,
+                timestamp: timestamp
+            });
+            autoSaveChat();
+            messageInput.value = '';
+        }
+
+        // Toggle mute status
+        function toggleMute() {
+            isMuted = !isMuted;
+            muteBtn.textContent = isMuted ? 'Unmute Peer' : 'Mute Peer';
+            
+            if (conn && conn.open) {
+                const notification = isMuted ? 
+                    'Host has muted your messages' : 
+                    'Host has unmuted your messages';
+                
+                conn.send({
+                    type: 'notification',
+                    text: notification
+                });
+                
+                addNotification(isMuted ? 
+                    'You have muted the peer' : 
+                    'You have unmuted the peer');
+            }
+        }
+
+        // Save current chat to local storage
+        function saveCurrentChat() {
+            if (currentChat.peerId && currentChat.messages.length > 0) {
+                // Check if we already have a chat with this peer
+                const existingChatIndex = chatHistoryData.findIndex(
+                    chat => chat.peerId === currentChat.peerId
+                );
+                
+                if (existingChatIndex !== -1) {
+                    // Update existing chat
+                    chatHistoryData[existingChatIndex] = {...currentChat};
+                } else {
+                    // Add new chat
+                    chatHistoryData.push({...currentChat});
+                }
+                
+                localStorage.setItem('peerjs-chat-history', JSON.stringify(chatHistoryData));
+                renderSavedChats();
+            }
+            
+            // Reset current chat
+            currentChat = {
+                peerId: '',
+                messages: [],
+                date: null
+            };
+            messagesDiv.innerHTML = '';
+        }
+
+        // Auto-save chat periodically
+        function autoSaveChat() {
+            if (isHost && currentChat.peerId && currentChat.messages.length > 0) {
+                const chatToSave = {
+                    peerId: currentChat.peerId,
+                    messages: [...currentChat.messages],
+                    date: currentChat.date
+                };
+                
+                localStorage.setItem('peerjs-current-chat', JSON.stringify(chatToSave));
+            }
+        }
+
+        // Load chat history from local storage
+        function loadChatHistory() {
+            const savedHistory = localStorage.getItem('peerjs-chat-history');
+            if (savedHistory) {
+                chatHistoryData = JSON.parse(savedHistory);
+                renderSavedChats();
+            }
+            
+            // Load any auto-saved current chat
+            const savedCurrentChat = localStorage.getItem('peerjs-current-chat');
+            if (savedCurrentChat) {
+                const chat = JSON.parse(savedCurrentChat);
+                currentChat.peerId = chat.peerId;
+                currentChat.messages = chat.messages;
+                currentChat.date = chat.date;
+                
+                // If we're not currently connected, show the history section
+                if (!conn) {
+                    chatHistory.style.display = 'block';
+                }
+            }
+        }
+
+        // Render saved chats in the history section
+        function renderSavedChats() {
+            savedChats.innerHTML = '';
+            
+            if (chatHistoryData.length === 0) {
+                savedChats.innerHTML = '<p>No saved chats yet.</p>';
+                return;
+            }
+            
+            // Sort by date (newest first)
+            const sortedChats = [...chatHistoryData].sort((a, b) => 
+                new Date(b.date) - new Date(a.date)
+            );
+            
+            sortedChats.forEach((chat, index) => {
+                const chatDiv = document.createElement('div');
+                chatDiv.className = 'saved-chat';
+                chatDiv.innerHTML = `
+                    <strong>Peer: ${chat.peerId}</strong>
+                    <span style="float: right;">${new Date(chat.date).toLocaleString()}</span>
+                    <div>${chat.messages.length} messages</div>
+                `;
+                
+                chatDiv.addEventListener('click', () => {
+                    if (confirm('Load this chat history? Current chat will be cleared.')) {
+                        loadChat(chat);
+                    }
+                });
+                
+                savedChats.appendChild(chatDiv);
+            });
+            
+            chatHistory.style.display = 'block';
+        }
+
+        // Load a specific chat from history
+        function loadChat(chat) {
+            messagesDiv.innerHTML = '';
+            chat.messages.forEach(msg => {
+                addMessage(msg.text, msg.sent, new Date(msg.timestamp));
+            });
+            
+            // Update current chat
+            currentChat = {...chat};
+            
+            addNotification('Loaded saved chat history');
+        }
+
+        // Generate a new ID
+        function generateNewId() {
+            if (conn) {
+                alert('Please disconnect before generating a new ID');
+                return;
+            }
+            
+            if (confirm('Generate a new ID? Your current ID will be replaced.')) {
+                myId = generateId();
+                setCookie('peerjs_chat_id', myId, 365);
+                peerIdInput.value = myId;
+                
+                // Reinitialize Peer with new ID
+                if (peer) {
+                    peer.destroy();
+                }
+                initializePeer();
+                
+                addNotification('New ID generated');
+            }
+        }
+
+        // Event listeners
+        copyIdBtn.addEventListener('click', () => {
+            peerIdInput.select();
+            document.execCommand('copy');
+            addNotification('ID copied to clipboard');
+        });
+        
+        newIdBtn.addEventListener('click', generateNewId);
+        
+        connectBtn.addEventListener('click', connectToPeer);
+        
+        sendBtn.addEventListener('click', sendMessage);
+        
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        disconnectBtn.addEventListener('click', () => {
+            resetConnection();
+            updateStatus('Disconnected - Waiting for peer connection', false);
+        });
+        
+        muteBtn.addEventListener('click', toggleMute);
+        
+        saveBtn.addEventListener('click', () => {
+            saveCurrentChat();
+            addNotification('Chat history saved');
+        });
+
+        acceptCookiesBtn.addEventListener('click', () => {
+            setCookie('cookie_consent', 'accepted', 365);
+            hideCookieConsent();
+            // If we don't have an ID yet, generate one
+            if (!getCookie('peerjs_chat_id')) {
+                myId = generateId();
+                setCookie('peerjs_chat_id', myId, 365);
+                initializePeer();
+            }
+        });
+
+        declineCookiesBtn.addEventListener('click', () => {
+            setCookie('cookie_consent', 'declined', 365);
+            hideCookieConsent();
+            // Use session-only ID
+            myId = generateId();
+            initializePeer();
+        });
+
+        idBookToggle.addEventListener('click', function() {
+            if (idBookContent.style.display === 'block') {
+                idBookContent.style.display = 'none';
+                this.querySelector('span').textContent = '▼';
+            } else {
+                idBookContent.style.display = 'block';
+                this.querySelector('span').textContent = '▲';
+                renderIdBook();
+            }
+        });
+
+        acceptConnectionBtn.addEventListener('click', () => {
+            hideConnectionAlert();
+            
+            if (incomingConnection) {
+                conn = incomingConnection;
+                setupConnection();
+                currentChat.peerId = conn.peer;
+                currentChat.date = new Date();
+                
+                // Add to ID Book
+                addToIdBook(conn.peer);
+                
+                updateStatus(`Connected to ${conn.peer}`, true);
+                chatContainer.style.display = 'block';
+                disconnectBtn.style.display = 'block';
+                actionButtons.style.display = 'flex';
+                isHost = false;
+                hostIndicator.style.display = 'none';
+                
+                // Send a welcome notification
+                conn.send({
+                    type: 'notification',
+                    text: 'You are now connected!'
+                });
+                addNotification('You are now connected!');
+            }
+            
+            incomingConnection = null;
+        });
+
+        rejectConnectionBtn.addEventListener('click', () => {
+            hideConnectionAlert();
+            
+            if (incomingConnection) {
+                incomingConnection.close();
+                addNotification(`Rejected connection from ${incomingConnection.peer}`);
+                incomingConnection = null;
+            }
+        });
+
+        // Initialize the app
+        if (checkCookiesEnabled()) {
+            showCookieConsent();
+            // Try to initialize with saved ID or generate new one
+            const savedId = getCookie('peerjs_chat_id');
+            myId = savedId || generateId();
+            if (!savedId) {
+                setCookie('peerjs_chat_id', myId, 365);
+            }
+            initializePeer();
+        } else {
+            // Cookies not enabled - use session-only
+            alert('Cookies are disabled in your browser. Some features may not work properly.');
+            myId = generateId();
+            initializePeer();
+        }
+    </script>
+</body>
+</html>
